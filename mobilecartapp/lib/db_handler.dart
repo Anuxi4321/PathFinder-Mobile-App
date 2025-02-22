@@ -17,24 +17,20 @@ class DatabaseHandler {
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'pathfinder.db');
+    final path = join(dbPath, 'shopping_list.db');
 
     return openDatabase(
       path,
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE Items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            imageUrl TEXT,
-            price REAL,
-            barcode TEXT UNIQUE,
-            location TEXT,
-            x REAL,
-            y REAL
-          )
-        ''');
+            CREATE TABLE Items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT,
+              imageUrl TEXT,
+              price REAL
+            )
+          ''');
         await _insertSampleItems(db);
       },
     );
@@ -51,37 +47,43 @@ class DatabaseHandler {
     return await db.query('Items');
   }
 
-  Future<List<Map<String, dynamic>>> getItemLocations() async {
-    final db = await database;
-    return await db.query('Items', columns: ['name', 'x', 'y']);
-  }
-
-  Future<Map<String, dynamic>?> getItemByBarcode(String barcode) async {
-    final db = await database;
-    final result =
-        await db.query('Items', where: 'barcode = ?', whereArgs: [barcode]);
-    return result.isNotEmpty ? result.first : null;
-  }
-
   Future<void> _insertSampleItems(Database db) async {
     final sampleData = [
+      {'name': 'Milk', 'imageUrl': 'assets/images/milk.png', 'price': 60.00},
+      {'name': 'Bread', 'imageUrl': 'assets/images/bread.png', 'price': 30.00},
+      {'name': 'Eggs', 'imageUrl': 'assets/images/eggs.png', 'price': 50.00},
       {
-        'name': 'Sardines',
-        'imageUrl': 'assets/images/sardines.png',
-        'price': 20.50,
-        'barcode': '123456789012',
-        'location': 'Aisle 1',
-        'x': 50.0,
-        'y': 150.0
+        'name': 'Butter',
+        'imageUrl': 'assets/images/butter.png',
+        'price': 90.00
       },
       {
-        'name': 'Milk',
-        'imageUrl': 'assets/images/milk.png',
-        'price': 60.00,
-        'barcode': '987654321098',
-        'location': 'Aisle 3',
-        'x': 120.0,
-        'y': 200.0
+        'name': 'Cheese',
+        'imageUrl': 'assets/images/cheese.png',
+        'price': 120.00
+      },
+      {
+        'name': 'Apples',
+        'imageUrl': 'assets/images/apples.png',
+        'price': 80.00
+      },
+      {
+        'name': 'Bananas',
+        'imageUrl': 'assets/images/bananas.png',
+        'price': 40.00
+      },
+      {'name': 'Rice', 'imageUrl': 'assets/images/rice.png', 'price': 70.00},
+      {
+        'name': 'Chicken',
+        'imageUrl': 'assets/images/chicken.png',
+        'price': 150.00
+      },
+      {'name': 'Fish', 'imageUrl': 'assets/images/fish.png', 'price': 200.00},
+      {'name': 'Pasta', 'imageUrl': 'assets/images/pasta.png', 'price': 60.00},
+      {
+        'name': 'Tomatoes',
+        'imageUrl': 'assets/images/tomatoes.png',
+        'price': 45.00
       }
     ];
 

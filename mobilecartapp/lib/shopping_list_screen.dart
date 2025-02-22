@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'db_handler.dart';
+import 'package:sqflite/sqflite.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -12,21 +14,66 @@ class ShoppingListScreen extends StatefulWidget {
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
   final List<Map<String, dynamic>> _items = [];
   final TextEditingController _itemController = TextEditingController();
+  final DatabaseHandler _dbHandler = DatabaseHandler();
+  List<Map<String, dynamic>> _searchResults = [];
 
-  void _addItem() {
-    if (_itemController.text.isNotEmpty) {
+  Future<void> _searchItems(String query) async {
+    if (query.isEmpty) {
       setState(() {
-        _items.add({'name': _itemController.text, 'quantity': 1});
-        _itemController.clear();
+        _searchResults = [];
       });
+      return;
     }
+
+    final Database db = await _dbHandler.database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'Items',
+      where: 'name LIKE ?',
+      whereArgs: ['%$query%'],
+    );
+
+    setState(() {
+      _searchResults = results;
+    });
+  }
+
+  void _showAddItemModal(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add ${item['name']}?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.network(item['imageUrl'], height: 100),
+            const SizedBox(height: 10),
+            Text('Price: \$${item['price']}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _items.add({'name': item['name'], 'quantity': 1});
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _updateQuantity(int index, int change) {
     setState(() {
       _items[index]['quantity'] += change;
       if (_items[index]['quantity'] < 1) {
-        _items.removeAt(index); // Remove item if quantity is 0
+        _items.removeAt(index);
       }
     });
   }
@@ -39,32 +86,24 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
 
   Future<void> _syncShoppingList() async {
     try {
-      // Navigate to the QR scanner screen and wait for the result
       final result = await Navigator.pushNamed(context, '/qr_scanner');
-
-      // Check if the result contains the MAC address and session key
       if (result != null && result is Map<String, dynamic>) {
         final String macAddress = result['mac'];
         final String sessionKey = result['key'];
 
-        // Encode the shopping list
         final String shoppingListData = jsonEncode({
           'mac': macAddress,
           'key': sessionKey,
           'items': _items,
         });
 
-        // Send the shopping list to the smart cart
         final response = await http.post(
-          Uri.parse(
-              'http://<SMART_CART_IP>:5000/sync_shopping_list'), // Replace with smart cart IP
+          Uri.parse('http://<SMART_CART_IP>:5000/sync_shopping_list'),
           headers: {'Content-Type': 'application/json'},
           body: shoppingListData,
         );
 
-        // Check the response
         if (response.statusCode == 200) {
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Shopping list synced successfully!'),
@@ -78,7 +117,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         throw Exception('Invalid QR code data');
       }
     } catch (e) {
-      // Show error message if sending fails
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to sync shopping list. Please try again.'),
@@ -95,10 +133,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         title: const Text(
           'Shopping List',
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.blue,
@@ -116,13 +151,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: TextField(
+              // Search Box
+              SizedBox(
+                width: double.infinity,
+                child: Column(
+                  children: [
+                    TextField(
                       controller: _itemController,
+                      onChanged: _searchItems,
                       decoration: InputDecoration(
-                        hintText: 'Enter item',
+                        hintText: 'Search for items',
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
@@ -133,29 +171,30 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                             horizontal: 20, vertical: 15),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: _addItem,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                    // Dropdown for search results
+                    if (_searchResults.isNotEmpty)
+                      Container(
+                        color: Colors.white,
+                        child: Column(
+                          children: _searchResults.map((item) {
+                            return ListTile(
+                              title: Text(item['name']),
+                              onTap: () => _showAddItemModal(item),
+                            );
+                          }).toList(),
+                        ),
                       ),
-                      elevation: 5,
-                    ),
-                    child: const Text('Add'),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
+
+              // Shopping List
               Expanded(
                 child: ListView.builder(
                   itemCount: _items.length,
                   itemBuilder: (context, index) {
+                    final item = _items[index];
                     return Card(
                       elevation: 5,
                       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -168,7 +207,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                           children: <Widget>[
                             Expanded(
                               child: Text(
-                                _items[index]['name'],
+                                item['name'],
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -183,11 +222,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                                   color: Colors.red,
                                 ),
                                 Text(
-                                  '${_items[index]['quantity']}',
+                                  '${item['quantity']}',
                                   style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.add, size: 20),
@@ -208,6 +246,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   },
                 ),
               ),
+              const SizedBox(height: 10),
+
+              // Sync Button
               ElevatedButton(
                 onPressed: _syncShoppingList,
                 style: ElevatedButton.styleFrom(

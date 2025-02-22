@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert'; // For JSON decoding
 
 class QRScannerScreen extends StatefulWidget {
@@ -14,8 +15,35 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   final GlobalKey _qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? _qrViewController;
 
-  void _toggleScanner() {
-    setState(() => _isScanning = !_isScanning);
+  // Request camera permission before enabling the scanner
+  Future<void> _toggleScanner() async {
+    var status = await Permission.camera.request();
+
+    if (status.isGranted) {
+      setState(() => _isScanning = !_isScanning);
+    } else if (status.isDenied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Camera permission denied. Please allow access.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (status.isPermanentlyDenied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Camera permission permanently denied. Open settings to enable.',
+          ),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: 'Open Settings',
+            onPressed: () {
+              openAppSettings(); // Open app settings to enable camera
+            },
+          ),
+        ),
+      );
+    }
   }
 
   void _onQRViewCreated(QRViewController controller) {
