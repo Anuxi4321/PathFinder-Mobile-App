@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'db_handler.dart';
-import 'package:sqflite/sqflite.dart';
+import 'dart:async';
+import 'shopping_list_repository.dart';
+import 'shopping_list_sync.dart';
+import 'shopping_list_widgets.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -14,257 +14,204 @@ class ShoppingListScreen extends StatefulWidget {
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
   final List<Map<String, dynamic>> _items = [];
   final TextEditingController _itemController = TextEditingController();
-  final DatabaseHandler _dbHandler = DatabaseHandler();
+  final ShoppingListRepository _repository = ShoppingListRepository();
+  final ShoppingListSync _sync = ShoppingListSync();
   List<Map<String, dynamic>> _searchResults = [];
+  Timer? _debounce;
 
-  Future<void> _searchItems(String query) async {
-    if (query.isEmpty) {
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final results = await _repository.searchItems(query);
       setState(() {
-        _searchResults = [];
+        _searchResults = results
+            .where((item) => item['name'].toLowerCase().startsWith(query.toLowerCase()))
+            .toList();
       });
-      return;
-    }
-
-    final Database db = await _dbHandler.database;
-    final List<Map<String, dynamic>> results = await db.query(
-      'Items',
-      where: 'name LIKE ?',
-      whereArgs: ['%$query%'],
-    );
-
-    setState(() {
-      _searchResults = results;
     });
   }
 
-  void _showAddItemModal(Map<String, dynamic> item) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add ${item['name']}?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.network(item['imageUrl'], height: 100),
-            const SizedBox(height: 10),
-            Text('Price: \$${item['price']}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _items.add({'name': item['name'], 'quantity': 1});
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
+  void _clearSearch() {
+    _itemController.clear();
+    _onSearchChanged('');
+    setState(() {});
+  }
+
+  void _addItem(Map<String, dynamic> item) {
+    ShoppingListWidgets.showAddItemModal(context, item, () {
+      int index = _items.indexWhere((i) => i['name'] == item['name']);
+      setState(() {
+        if (index != -1) {
+          _items[index]['quantity'] += 1;
+        } else {
+          _items.add({'name': item['name'], 'quantity': 1});
+        }
+        _clearSearch();
+      });
+    });
   }
 
   void _updateQuantity(int index, int change) {
     setState(() {
       _items[index]['quantity'] += change;
       if (_items[index]['quantity'] < 1) {
-        _items.removeAt(index);
+        _confirmRemoveItem(index);
       }
     });
   }
 
-  void _removeItem(int index) {
-    setState(() {
-      _items.removeAt(index);
-    });
-  }
-
-  Future<void> _syncShoppingList() async {
-    try {
-      final result = await Navigator.pushNamed(context, '/qr_scanner');
-      if (result != null && result is Map<String, dynamic>) {
-        final String macAddress = result['mac'];
-        final String sessionKey = result['key'];
-
-        final String shoppingListData = jsonEncode({
-          'mac': macAddress,
-          'key': sessionKey,
-          'items': _items,
-        });
-
-        final response = await http.post(
-          Uri.parse('http://<SMART_CART_IP>:5000/sync_shopping_list'),
-          headers: {'Content-Type': 'application/json'},
-          body: shoppingListData,
-        );
-
-        if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Shopping list synced successfully!'),
-              backgroundColor: Colors.green,
+  void _confirmRemoveItem(int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Remove Item'),
+          content: Text('Do you want to remove "${_items[index]['name']}" from the list?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Cancel
+              child: const Text('Cancel'),
             ),
-          );
-        } else {
-          throw Exception('Failed to sync shopping list');
-        }
-      } else {
-        throw Exception('Invalid QR code data');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to sync shopping list. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _items.removeAt(index);
+                });
+                Navigator.pop(context); // Close modal
+              },
+              child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Shopping List',
-          style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
+        title: const Text('Shopping List',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.blue,
-        elevation: 10,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue, Colors.lightBlueAccent],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: <Widget>[
-              // Search Box
-              SizedBox(
-                width: double.infinity,
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _itemController,
-                      onChanged: _searchItems,
-                      decoration: InputDecoration(
-                        hintText: 'Search for items',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 15),
-                      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Stack(
+          children: [
+            Column(
+              children: <Widget>[
+                TextField(
+                  controller: _itemController,
+                  onChanged: (query) {
+                    _onSearchChanged(query);
+                    setState(() {}); // Update UI when typing
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search for items',
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
                     ),
-                    // Dropdown for search results
-                    if (_searchResults.isNotEmpty)
-                      Container(
-                        color: Colors.white,
-                        child: Column(
-                          children: _searchResults.map((item) {
-                            return ListTile(
-                              title: Text(item['name']),
-                              onTap: () => _showAddItemModal(item),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                  ],
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: _itemController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: _clearSearch,
+                          )
+                        : null,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-
-              // Shopping List
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _items.length,
-                  itemBuilder: (context, index) {
-                    final item = _items[index];
-                    return Card(
-                      elevation: 5,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Text(
-                                item['name'],
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 5,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ListView.builder(
+                      itemCount: _items.length,
+                      itemBuilder: (context, index) {
+                        final item = _items[index];
+                        return ListTile(
+                          title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: () => _updateQuantity(index, -1),
+                              ),
+                              Text('${item['quantity']}'),
+                              GestureDetector(
+                                onLongPress: () => _updateQuantity(index, 5),
+                                child: IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: () => _updateQuantity(index, 1),
                                 ),
                               ),
-                            ),
-                            Row(
-                              children: <Widget>[
-                                IconButton(
-                                  icon: const Icon(Icons.remove, size: 20),
-                                  onPressed: () => _updateQuantity(index, -1),
-                                  color: Colors.red,
-                                ),
-                                Text(
-                                  '${item['quantity']}',
-                                  style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.add, size: 20),
-                                  onPressed: () => _updateQuantity(index, 1),
-                                  color: Colors.green,
-                                ),
-                              ],
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, size: 20),
-                              onPressed: () => _removeItem(index),
-                              color: Colors.grey,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Sync Button
-              ElevatedButton(
-                onPressed: _syncShoppingList,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.blue,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () => _confirmRemoveItem(index),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  elevation: 5,
                 ),
-                child: const Text('Sync with QR Code'),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: _items.isEmpty ? null : () => _sync.syncShoppingList(context, _items),
+                  child: const Text('Sync with QR Code'),
+                ),
+              ],
+            ),
+            if (_searchResults.isNotEmpty)
+              Positioned(
+                top: 60,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 5,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: _searchResults.map((item) {
+                      return Card(
+                        child: ListTile(
+                          title: Text(item['name']),
+                          onTap: () => _addItem(item),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

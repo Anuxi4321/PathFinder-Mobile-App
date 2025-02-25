@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   sqflite: ^2.3.0  # Database package
+  sqflite_common_ffi: ^2.3.0  # Add this for Linux/Raspberry Pi support
   path_provider: ^2.1.2  # Helps get database directory
   http: ^0.13.6  # For API requests
   path: ^1.8.3
