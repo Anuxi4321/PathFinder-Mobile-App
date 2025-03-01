@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:convert'; // For JSON decoding
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class QRScannerScreen extends StatefulWidget {
-  const QRScannerScreen({super.key});
+  final List<Map<String, dynamic>> shoppingList; // ✅ Accept shopping list
+
+  const QRScannerScreen({super.key, required this.shoppingList}); // ✅ Constructor
 
   @override
   _QRScannerScreenState createState() => _QRScannerScreenState();
@@ -12,10 +15,11 @@ class QRScannerScreen extends StatefulWidget {
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
   bool _isScanning = false;
+  bool _isProcessing = false; // ✅ Prevent duplicate scans
   final GlobalKey _qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? _qrViewController;
+  final String smartCartIP = "192.168.1.100"; // ✅ Configurable IP
 
-  // Request camera permission before enabling the scanner
   Future<void> _toggleScanner() async {
     var status = await Permission.camera.request();
 
@@ -38,7 +42,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           action: SnackBarAction(
             label: 'Open Settings',
             onPressed: () {
-              openAppSettings(); // Open app settings to enable camera
+              openAppSettings();
             },
           ),
         ),
@@ -49,33 +53,55 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   void _onQRViewCreated(QRViewController controller) {
     _qrViewController = controller;
     controller.scannedDataStream.listen((scanData) {
-      setState(() => _isScanning = false);
-      _processScan(scanData.code!);
+      if (!_isProcessing) {
+        _isProcessing = true; // ✅ Prevent multiple scans
+        setState(() => _isScanning = false);
+        _processScan(scanData.code!);
+      }
     });
   }
 
-  void _processScan(String data) {
+  void _processScan(String data) async {
     try {
-      // Parse the QR data (expected format: {"mac": "XX:XX:XX:XX:XX:XX", "key": "sessionKey"})
       final Map<String, dynamic> qrData = jsonDecode(data);
-      final String macAddress = qrData['mac'];
-      final String sessionKey = qrData['key'];
+      final String macAddress = qrData['mac'] ?? "";
+      final String sessionKey = qrData['key'] ?? "";
 
-      // Validate the data
       if (macAddress.isEmpty || sessionKey.isEmpty) {
         throw Exception('Invalid QR data');
       }
 
-      // Navigate back to the shopping list with the scanned data
-      Navigator.pop(context, {'mac': macAddress, 'key': sessionKey});
+      // ✅ Use the shopping list passed from ShoppingListScreen
+      List<Map<String, dynamic>> shoppingList = widget.shoppingList;
+
+      final String cartUrl = "http://$smartCartIP:5000/sync_shopping_list";
+
+      final Map<String, dynamic> requestBody = {
+        "mac": macAddress,
+        "key": sessionKey, // ✅ Include sessionKey
+        "shopping_list": shoppingList,
+      };
+
+      final response = await http.post(
+        Uri.parse(cartUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        Navigator.pop(context, {'mac': macAddress, 'key': sessionKey});
+      } else {
+        throw Exception("Failed to sync shopping list: ${response.body}");
+      }
     } catch (e) {
-      // Show error message if QR data is invalid
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid QR code. Please scan a valid sync code.'),
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      _isProcessing = false; // ✅ Allow scanning again
     }
   }
 

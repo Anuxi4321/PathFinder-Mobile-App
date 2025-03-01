@@ -56,7 +56,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     setState(() {
       _items[index]['quantity'] += change;
       if (_items[index]['quantity'] < 1) {
-        _confirmRemoveItem(index);
+        _items.removeAt(index);
       }
     });
   }

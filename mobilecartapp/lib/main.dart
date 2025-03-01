@@ -3,7 +3,6 @@ import 'login_screen.dart';
 import 'landing_screen.dart';
 import 'shopping_list_screen.dart';
 import 'qr_scanner_screen.dart';
-import 'db_handler.dart';
 
 void main() {
   runApp(const PathfinderApp());
@@ -26,7 +25,12 @@ class PathfinderApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/landing': (context) => const LandingScreen(),
         '/shopping_list': (context) => const ShoppingListScreen(),
-        '/qr_scanner': (context) => const QRScannerScreen(),
+        '/qr_scanner': (context) {
+          final shoppingList = (ModalRoute.of(context)?.settings.arguments as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ?? [];
+          return QRScannerScreen(shoppingList: shoppingList);
+        },
       },
     );
   }

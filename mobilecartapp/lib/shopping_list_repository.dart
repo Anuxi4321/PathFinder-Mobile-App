@@ -11,7 +11,7 @@ class ShoppingListRepository {
     return await db.query(
       'Items',
       where: 'LOWER(name) LIKE LOWER(?)',
-      whereArgs: ['%$query%'],
+      whereArgs: ['%$query%'.toLowerCase()],
     );
   }
 }
