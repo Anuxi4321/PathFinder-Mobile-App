@@ -30,20 +30,44 @@ class DatabaseHandler {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 3, // Increment version to apply changes
         onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE Items (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT,
-              imageUrl TEXT,
-              price REAL
-            )
-          ''');
+          await _createTables(db);
           await _insertSampleItems(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 3) {
+            await _createShoppingListsTable(db);
+          }
         },
       ),
     );
+  }
+
+  Future<void> _createTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS Items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        imageUrl TEXT,
+        price REAL
+      )
+    '''
+    );
+
+    await _createShoppingListsTable(db);
+  }
+
+  Future<void> _createShoppingListsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ShoppingLists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        quantity INTEGER,
+        date TEXT,
+        items TEXT
+      )
+    ''');
   }
 
   Future<void> insertItem(Map<String, dynamic> item) async {
@@ -54,6 +78,23 @@ class DatabaseHandler {
   Future<List<Map<String, dynamic>>> getItems() async {
     final db = await database;
     return await db.query('Items');
+  }
+
+  Future<void> saveShoppingList(List<Map<String, dynamic>> items) async {
+    final db = await database;
+    final date = DateTime.now().toIso8601String();
+
+    for (var item in items) {
+      await db.insert(
+        'ShoppingLists',
+        {
+          'name': item['name'],
+          'quantity': item['quantity'],
+          'date': date,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
   }
 
   Future<void> _insertSampleItems(Database db) async {
@@ -82,4 +123,10 @@ class DatabaseHandler {
       await db.insert('Items', item, conflictAlgorithm: ConflictAlgorithm.replace);
     }
   }
-}
+
+  Future<void> deleteDatabaseFile() async {
+    final dbDir = await getApplicationDocumentsDirectory();
+    final path = join(dbDir.path, 'shopping_list.db');
+    await deleteDatabase(path);
+  }
+} 

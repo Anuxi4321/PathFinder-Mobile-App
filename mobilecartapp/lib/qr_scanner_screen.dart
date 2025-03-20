@@ -17,7 +17,7 @@ class QRScannerScreen extends StatefulWidget {
 
 class _QRScannerScreenState extends State<QRScannerScreen> {
   final TextEditingController _qrCodeController = TextEditingController();
-  final String smartCartIP = "192.168.125.218";
+  final String smartCartIP = "192.168.111.218";
   List<Map<String, dynamic>> shoppingList = [];
 
   @override

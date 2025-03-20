@@ -32,6 +32,18 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     });
   }
 
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args != null && args is List) {
+      setState(() {
+        _items.clear();
+        _items.addAll(List<Map<String, dynamic>>.from(args)); // Ensure it's mutable
+      });
+    }
+  }
+
   void _clearSearch() {
     _itemController.clear();
     _onSearchChanged('');
@@ -47,7 +59,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         } else {
           _items.add({'name': item['name'], 'quantity': 1});
         }
-        print('Updated Shopping List: $_items'); // Debug log
         _clearSearch();
       });
     });
@@ -59,7 +70,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       if (_items[index]['quantity'] < 1) {
         _items.removeAt(index);
       }
-      print('Updated Shopping List: $_items'); // Debug log
     });
   }
 
@@ -72,7 +82,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           content: Text('Do you want to remove "${_items[index]['name']}" from the list?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), // Cancel
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
             TextButton(
@@ -80,8 +90,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 setState(() {
                   _items.removeAt(index);
                 });
-                print('Updated Shopping List after removal: $_items'); // Debug log
-                Navigator.pop(context); // Close modal
+                Navigator.pop(context);
               },
               child: const Text('Remove', style: TextStyle(color: Colors.red)),
             ),
@@ -92,8 +101,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _syncShoppingList() {
-    print('Final Shopping List before sync: $_items'); // Debug log
     _sync.syncShoppingList(context, _items);
+  }
+
+  void _saveShoppingList() async {
+    await _repository.saveShoppingList(_items);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Shopping list saved!')),
+    );
   }
 
   @override
@@ -115,7 +130,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   controller: _itemController,
                   onChanged: (query) {
                     _onSearchChanged(query);
-                    setState(() {}); // Update UI when typing
+                    setState(() {});
                   },
                   decoration: InputDecoration(
                     hintText: 'Search for items',
@@ -141,7 +156,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
                           blurRadius: 5,
@@ -163,12 +178,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                                 onPressed: () => _updateQuantity(index, -1),
                               ),
                               Text('${item['quantity']}'),
-                              GestureDetector(
-                                onLongPress: () => _updateQuantity(index, 5),
-                                child: IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: () => _updateQuantity(index, 1),
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () => _updateQuantity(index, 1),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete),
@@ -182,9 +194,18 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: _items.isEmpty ? null : _syncShoppingList,
-                  child: const Text('Sync with QR Code'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _items.isEmpty ? null : _syncShoppingList,
+                      child: const Text('Sync with QR Code'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _items.isEmpty ? null : _saveShoppingList,
+                      child: const Text('Save List'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -198,7 +219,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black26,
                         blurRadius: 5,
