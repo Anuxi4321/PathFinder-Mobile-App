@@ -27,8 +27,8 @@ class PathfinderApp extends StatelessWidget {
         '/shopping_list': (context) => const ShoppingListScreen(),
         '/qr_scanner': (context) {
           final shoppingList = (ModalRoute.of(context)?.settings.arguments as List?)
-            ?.whereType<Map<String, dynamic>>()
-            .toList() ?? [];
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ?? [];
           return QRScannerScreen(shoppingList: shoppingList);
         },
       },

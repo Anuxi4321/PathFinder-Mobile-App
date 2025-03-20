@@ -3,14 +3,26 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Ensure all Java modules use Java 17
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+
+    // Ensure all Kotlin modules use Java 17
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions.jvmTarget = "17"
+    }
 }
 
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {

@@ -47,6 +47,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         } else {
           _items.add({'name': item['name'], 'quantity': 1});
         }
+        print('Updated Shopping List: $_items'); // Debug log
         _clearSearch();
       });
     });
@@ -58,6 +59,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       if (_items[index]['quantity'] < 1) {
         _items.removeAt(index);
       }
+      print('Updated Shopping List: $_items'); // Debug log
     });
   }
 
@@ -78,6 +80,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 setState(() {
                   _items.removeAt(index);
                 });
+                print('Updated Shopping List after removal: $_items'); // Debug log
                 Navigator.pop(context); // Close modal
               },
               child: const Text('Remove', style: TextStyle(color: Colors.red)),
@@ -86,6 +89,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         );
       },
     );
+  }
+
+  void _syncShoppingList() {
+    print('Final Shopping List before sync: $_items'); // Debug log
+    _sync.syncShoppingList(context, _items);
   }
 
   @override
@@ -175,7 +183,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 ),
                 const SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: _items.isEmpty ? null : () => _sync.syncShoppingList(context, _items),
+                  onPressed: _items.isEmpty ? null : _syncShoppingList,
                   child: const Text('Sync with QR Code'),
                 ),
               ],

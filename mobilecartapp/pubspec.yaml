@@ -30,21 +30,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  sqflite: ^2.3.0  # Database package
-  sqflite_common_ffi: ^2.3.0  # Add this for Linux/Raspberry Pi support
+  sqflite: ^2.3.2
   path_provider: ^2.1.2  # Helps get database directory
+  sqflite_common_ffi: ^2.3.2
   http: ^0.13.6  # For API requests
   path: ^1.8.3
   qr_flutter: ^4.0.0  # Generates QR codes
-  qr_code_scanner: ^1.0.0  # Scans QR codes
   uuid: ^3.0.0  # Generates unique IDs
   permission_handler: ^11.0.1
-
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-
+  url_launcher: ^6.2.1
+  android_intent_plus: ^5.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

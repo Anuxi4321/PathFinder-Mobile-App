@@ -1,118 +1,144 @@
 import 'package:flutter/material.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 
 class QRScannerScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> shoppingList; // ✅ Accept shopping list
+  final List<Map<String, dynamic>> shoppingList;
 
-  const QRScannerScreen({super.key, required this.shoppingList}); // ✅ Constructor
+  const QRScannerScreen({super.key, required this.shoppingList});
 
   @override
   _QRScannerScreenState createState() => _QRScannerScreenState();
 }
 
+
 class _QRScannerScreenState extends State<QRScannerScreen> {
-  bool _isScanning = false;
-  bool _isProcessing = false; // ✅ Prevent duplicate scans
-  final GlobalKey _qrKey = GlobalKey(debugLabel: 'QR');
-  QRViewController? _qrViewController;
-  final String smartCartIP = "192.168.1.100"; // ✅ Configurable IP
+  final TextEditingController _qrCodeController = TextEditingController();
+  final String smartCartIP = "192.168.125.218";
+  List<Map<String, dynamic>> shoppingList = [];
 
-  Future<void> _toggleScanner() async {
-    var status = await Permission.camera.request();
-
-    if (status.isGranted) {
-      setState(() => _isScanning = !_isScanning);
-    } else if (status.isDenied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Camera permission denied. Please allow access.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } else if (status.isPermanentlyDenied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Camera permission permanently denied. Open settings to enable.',
-          ),
-          backgroundColor: Colors.orange,
-          action: SnackBarAction(
-            label: 'Open Settings',
-            onPressed: () {
-              openAppSettings();
-            },
-          ),
-        ),
-      );
-    }
-  }
-
-  void _onQRViewCreated(QRViewController controller) {
-    _qrViewController = controller;
-    controller.scannedDataStream.listen((scanData) {
-      if (!_isProcessing) {
-        _isProcessing = true; // ✅ Prevent multiple scans
-        setState(() => _isScanning = false);
-        _processScan(scanData.code!);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final passedData = ModalRoute.of(context)?.settings.arguments;
+      if (passedData is List<Map<String, dynamic>>) {
+        setState(() {
+          shoppingList = passedData;
+        });
       }
+      print("✅ Shopping List received in QRScannerScreen: $shoppingList");
     });
   }
 
+  /// **📷 Opens the Camera for QR Scanning (Android Only)**
+  Future<void> _openCamera() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        final intent = AndroidIntent(
+          action: 'android.media.action.STILL_IMAGE_CAMERA',
+          flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+      } catch (e) {
+        _showError("⚠️ Camera could not be opened. Ensure the app has camera permissions.");
+      }
+    } else {
+      _showError("⚠️ Camera opening is only supported on Android.");
+    }
+  }
+
+  /// **📡 Processes the scanned QR Code and Syncs Shopping List**
   void _processScan(String data) async {
+    print("📤 Sync button pressed");
+    print("📎 Raw QR Data: $data");
+
+    if (data.trim().isEmpty) {
+      _showError("⚠️ Scanned QR code is empty.");
+      return;
+    }
+
     try {
       final Map<String, dynamic> qrData = jsonDecode(data);
+      print("✅ Decoded QR JSON: $qrData");
+
       final String macAddress = qrData['mac'] ?? "";
       final String sessionKey = qrData['key'] ?? "";
 
       if (macAddress.isEmpty || sessionKey.isEmpty) {
-        throw Exception('Invalid QR data');
+        throw Exception('⚠️ Invalid QR data: Missing MAC address or session key');
       }
 
-      // ✅ Use the shopping list passed from ShoppingListScreen
-      List<Map<String, dynamic>> shoppingList = widget.shoppingList;
+      print("🔹 MAC: $macAddress, Key: $sessionKey");
 
-      final String cartUrl = "http://$smartCartIP:5000/sync_shopping_list";
+      // **Check if shopping list is empty**
+      if (shoppingList.isEmpty) {
+        print("❌ Shopping list is empty! Cannot sync.");
+        _showError("⚠️ Shopping list is empty. Add items before syncing.");
+        return;
+      }
 
-      final Map<String, dynamic> requestBody = {
+      print("✅ Shopping List before sync: $shoppingList");
+
+      final Map<String, dynamic> payload = {
         "mac": macAddress,
-        "key": sessionKey, // ✅ Include sessionKey
-        "shopping_list": shoppingList,
+        "items": shoppingList, // Keep original structure
       };
 
+      final String syncUrl = "http://$smartCartIP:5000/sync_shopping_list";
+
+      print("📤 Sending JSON payload: ${jsonEncode(payload)}");
+
       final response = await http.post(
-        Uri.parse(cartUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestBody),
+        Uri.parse(syncUrl),
+        headers: {
+          "Content-Type": "application/json", // Ensure correct content type
+          "Accept": "application/json", // Some servers require this
+        },
+        body: jsonEncode(payload), // Explicitly convert to JSON
       );
 
+      print("📩 Response Status: ${response.statusCode}");
+      print("📩 Response Body: ${response.body}");
+
       if (response.statusCode == 200) {
-        Navigator.pop(context, {'mac': macAddress, 'key': sessionKey});
+        _showSuccess("✅ Shopping list synced successfully!");
+        Navigator.pop(context, {'mac': macAddress, 'key': sessionKey, 'shopping_list': shoppingList});
       } else {
-        throw Exception("Failed to sync shopping list: ${response.body}");
+        throw Exception("❌ Failed to sync shopping list: ${response.body}");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      _isProcessing = false; // ✅ Allow scanning again
+      print("🚨 Error: $e");
+      _showError('🚨 Error: ${e.toString()}');
     }
   }
 
-  @override
-  void dispose() {
-    _qrViewController?.dispose();
-    super.dispose();
+  /// **🚨 Displays an error message**
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  /// **✅ Displays a success message**
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    print("📜 Received Shopping List in UI: $shoppingList"); // Debug print
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sync the QR Code'),
@@ -120,29 +146,25 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         backgroundColor: Colors.blueAccent,
         elevation: 0,
       ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: _isScanning
-                ? QRView(
-                    key: _qrKey,
-                    onQRViewCreated: _onQRViewCreated,
-                    overlay: QrScannerOverlayShape(
-                      borderColor: Colors.blueAccent,
-                      borderRadius: 10,
-                      borderLength: 30,
-                      borderWidth: 10,
-                      cutOutSize: 300,
-                    ),
-                  )
-                : _buildScannerPlaceholder(),
-          ),
-          _buildButton('Sync the QR Code', _toggleScanner, Colors.blueAccent,
-              _isScanning ? 'Stop Scanning' : 'Sync the QR Code'),
-          _buildButton('Back to Shopping List', () => Navigator.pop(context),
-              Colors.grey[300]!, 'Back to Shopping List',
-              textColor: Colors.black),
-        ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            _buildScannerPlaceholder(),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _qrCodeController,
+              decoration: const InputDecoration(
+                labelText: "Paste QR Code Data Here",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildButton('📷 Open Camera', _openCamera, Colors.blueAccent),
+            _buildButton('🔄 Sync Shopping List', () => _processScan(_qrCodeController.text), Colors.green),
+            _buildButton('⬅️ Back to Shopping List', () => Navigator.pop(context), Colors.grey[300]!, textColor: Colors.black),
+          ],
+        ),
       ),
     );
   }
@@ -152,18 +174,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.qr_code_scanner,
-            size: 100,
-            color: Colors.blueAccent,
-          ),
+          const Icon(Icons.qr_code_scanner, size: 100, color: Colors.blueAccent),
           const SizedBox(height: 20),
           const Text(
-            'Press "Sync the QR Code" to start scanning',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            'Press "Open Camera" to scan the QR code, then paste the result below.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
         ],
@@ -171,24 +186,17 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     );
   }
 
-  Widget _buildButton(
-      String label, VoidCallback onPressed, Color color, String buttonText,
-      {Color textColor = Colors.white}) {
+  Widget _buildButton(String label, VoidCallback onPressed, Color color, {Color textColor = Colors.white}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        child: Text(
-          buttonText,
-          style: TextStyle(fontSize: 18, color: textColor),
-        ),
+        child: Text(label, style: TextStyle(fontSize: 18, color: textColor)),
       ),
     );
   }

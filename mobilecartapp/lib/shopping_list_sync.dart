@@ -6,13 +6,23 @@ class ShoppingListSync {
   final String smartCartIP = '192.168.1.100'; // Replace with actual cart IP or make configurable
 
   Future<void> syncShoppingList(BuildContext context, List<Map<String, dynamic>> items) async {
-    if (items.isEmpty) return;
+    if (items.isEmpty) {
+      print('Sync aborted: Shopping list is empty');
+      return;
+    }
 
     try {
-      final result = await Navigator.pushNamed(context, '/qr_scanner');
+        final result = await Navigator.pushNamed(
+          context,
+          '/qr_scanner',
+          arguments: items, // Pass shopping list here
+        );
       if (result != null && result is Map<String, dynamic>) {
         final String macAddress = result['mac'];
         final String sessionKey = result['key'];
+
+        print('MAC: $macAddress, Key: $sessionKey');
+        print('Shopping List before sending: $items'); // Debug log
 
         final String shoppingListData = jsonEncode({
           'mac': macAddress,
@@ -33,28 +43,13 @@ class ShoppingListSync {
             const SnackBar(content: Text('Shopping list synced successfully!'), backgroundColor: Colors.green),
           );
         } else {
-          String errorMessage = 'Failed to sync shopping list';
-          try {
-            if (response.headers['content-type']?.contains('application/json') == true) {
-              final responseBody = jsonDecode(response.body);
-              if (responseBody is Map<String, dynamic> && responseBody['error'] != null) {
-                errorMessage = responseBody['error'];
-              }
-            }
-          } catch (_) {
-            errorMessage = 'Unexpected response format';
-          }
-
-          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+            const SnackBar(content: Text('Failed to sync shopping list'), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Network error. Check connection and try again.'), backgroundColor: Colors.red),
-      );
+      print('Network error: $e');
     }
   }
 }

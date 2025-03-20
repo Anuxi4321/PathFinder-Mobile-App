@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseHandler {
@@ -17,34 +19,36 @@ class DatabaseHandler {
   }
 
   Future<Database> _initDatabase() async {
-    // Initialize FFI if running on Raspberry Pi / Linux
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    if (Platform.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
 
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'shopping_list.db');
+    final dbDir = await getApplicationDocumentsDirectory();
+    final path = join(dbDir.path, 'shopping_list.db');
 
-    return await databaseFactory.openDatabase(path,
-        options: OpenDatabaseOptions(
-          version: 1,
-          onCreate: (db, version) async {
-            await db.execute('''
-              CREATE TABLE Items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                imageUrl TEXT,
-                price REAL
-              )
-            ''');
-            await _insertSampleItems(db);
-          },
-        ));
+    return await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE Items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT,
+              imageUrl TEXT,
+              price REAL
+            )
+          ''');
+          await _insertSampleItems(db);
+        },
+      ),
+    );
   }
 
   Future<void> insertItem(Map<String, dynamic> item) async {
     final db = await database;
-    await db.insert('Items', item,
-        conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('Items', item, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getItems() async {
@@ -54,23 +58,28 @@ class DatabaseHandler {
 
   Future<void> _insertSampleItems(Database db) async {
     final sampleData = [
-      {'name': 'Milk', 'imageUrl': 'assets/images/milk.png', 'price': 60.00},
-      {'name': 'Bread', 'imageUrl': 'assets/images/bread.png', 'price': 30.00},
-      {'name': 'Eggs', 'imageUrl': 'assets/images/eggs.png', 'price': 50.00},
-      {'name': 'Butter', 'imageUrl': 'assets/images/butter.png', 'price': 90.00},
-      {'name': 'Cheese', 'imageUrl': 'assets/images/cheese.png', 'price': 120.00},
-      {'name': 'Apples', 'imageUrl': 'assets/images/apples.png', 'price': 80.00},
-      {'name': 'Bananas', 'imageUrl': 'assets/images/bananas.png', 'price': 40.00},
-      {'name': 'Rice', 'imageUrl': 'assets/images/rice.png', 'price': 70.00},
-      {'name': 'Chicken', 'imageUrl': 'assets/images/chicken.png', 'price': 150.00},
-      {'name': 'Fish', 'imageUrl': 'assets/images/fish.png', 'price': 200.00},
-      {'name': 'Pasta', 'imageUrl': 'assets/images/pasta.png', 'price': 60.00},
-      {'name': 'Tomatoes', 'imageUrl': 'assets/images/tomatoes.png', 'price': 45.00},
+      {'name': 'Skyflakes', 'imageUrl': 'assets/images/skyflakes.png', 'price': 8.00},
+      {'name': 'Fita', 'imageUrl': 'assets/images/fita.png', 'price': 7.00},
+      {'name': 'Presto', 'imageUrl': 'assets/images/presto.png', 'price': 7.00},
+      {'name': 'Clear', 'imageUrl': 'assets/images/clear.png', 'price': 8.00},
+      {'name': 'Sunsilk', 'imageUrl': 'assets/images/sunsilk.png', 'price': 8.00},
+      {'name': 'Dove', 'imageUrl': 'assets/images/dove.png', 'price': 9.00},
+      {'name': 'Patata', 'imageUrl': 'assets/images/patata.png', 'price': 8.00},
+      {'name': 'Oishi', 'imageUrl': 'assets/images/oishi.png', 'price': 8.00},
+      {'name': 'Chippy', 'imageUrl': 'assets/images/chippy.png', 'price': 8.00},
+      {'name': 'Ariel', 'imageUrl': 'assets/images/ariel.png', 'price': 16.00},
+      {'name': 'Surf', 'imageUrl': 'assets/images/surf.png', 'price': 8.00},
+      {'name': 'Wings', 'imageUrl': 'assets/images/wings.png', 'price': 8.00},
+      {'name': 'Coke', 'imageUrl': 'assets/images/coke.png', 'price': 40.00},
+      {'name': 'Sprite', 'imageUrl': 'assets/images/sprite.png', 'price': 40.00},
+      {'name': 'Royal', 'imageUrl': 'assets/images/royal.png', 'price': 40.00},
+      {'name': 'Cornbeef', 'imageUrl': 'assets/images/cornbeef.png', 'price': 25.00},
+      {'name': 'Beefloaf', 'imageUrl': 'assets/images/beefloaf.png', 'price': 30.00},
+      {'name': 'Sardines', 'imageUrl': 'assets/images/sardines.png', 'price': 27.00},
     ];
 
     for (var item in sampleData) {
-      await db.insert('Items', item,
-          conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert('Items', item, conflictAlgorithm: ConflictAlgorithm.replace);
     }
   }
 }
