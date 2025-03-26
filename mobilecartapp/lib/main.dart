@@ -3,6 +3,7 @@ import 'login_screen.dart';
 import 'landing_screen.dart';
 import 'shopping_list_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'catalog_screen.dart';
 
 void main() {
   runApp(const PathfinderApp());
@@ -31,6 +32,7 @@ class PathfinderApp extends StatelessWidget {
               .toList() ?? [];
           return QRScannerScreen(shoppingList: shoppingList);
         },
+        '/catalog': (context) => const CatalogScreen(),
       },
     );
   }

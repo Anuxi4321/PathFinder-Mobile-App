@@ -14,10 +14,8 @@ class QRScannerScreen extends StatefulWidget {
   _QRScannerScreenState createState() => _QRScannerScreenState();
 }
 
-
 class _QRScannerScreenState extends State<QRScannerScreen> {
   final TextEditingController _qrCodeController = TextEditingController();
-  final String smartCartIP = "192.168.111.218";
   List<Map<String, dynamic>> shoppingList = [];
 
   @override
@@ -67,14 +65,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
       final String macAddress = qrData['mac'] ?? "";
       final String sessionKey = qrData['key'] ?? "";
+      final String smartCartIP = qrData['ip'] ?? "";
 
-      if (macAddress.isEmpty || sessionKey.isEmpty) {
-        throw Exception('⚠️ Invalid QR data: Missing MAC address or session key');
+      if (macAddress.isEmpty || sessionKey.isEmpty || smartCartIP.isEmpty) {
+        throw Exception('⚠️ Invalid QR data: Missing MAC address, session key, or IP');
       }
 
-      print("🔹 MAC: $macAddress, Key: $sessionKey");
+      print("🔹 MAC: $macAddress, Key: $sessionKey, IP: $smartCartIP");
 
-      // **Check if shopping list is empty**
       if (shoppingList.isEmpty) {
         print("❌ Shopping list is empty! Cannot sync.");
         _showError("⚠️ Shopping list is empty. Add items before syncing.");
@@ -85,7 +83,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
       final Map<String, dynamic> payload = {
         "mac": macAddress,
-        "items": shoppingList, // Keep original structure
+        "items": shoppingList,
       };
 
       final String syncUrl = "http://$smartCartIP:5000/sync_shopping_list";
@@ -95,10 +93,10 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       final response = await http.post(
         Uri.parse(syncUrl),
         headers: {
-          "Content-Type": "application/json", // Ensure correct content type
-          "Accept": "application/json", // Some servers require this
+          "Content-Type": "application/json",
+          "Accept": "application/json",
         },
-        body: jsonEncode(payload), // Explicitly convert to JSON
+        body: jsonEncode(payload),
       );
 
       print("📩 Response Status: ${response.statusCode}");
@@ -138,7 +136,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print("📜 Received Shopping List in UI: $shoppingList"); // Debug print
+    print("📜 Received Shopping List in UI: $shoppingList");
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sync the QR Code'),
@@ -150,8 +148,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildScannerPlaceholder(),
-            const SizedBox(height: 20),
             TextField(
               controller: _qrCodeController,
               decoration: const InputDecoration(
@@ -165,23 +161,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             _buildButton('⬅️ Back to Shopping List', () => Navigator.pop(context), Colors.grey[300]!, textColor: Colors.black),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildScannerPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.qr_code_scanner, size: 100, color: Colors.blueAccent),
-          const SizedBox(height: 20),
-          const Text(
-            'Press "Open Camera" to scan the QR code, then paste the result below.',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
