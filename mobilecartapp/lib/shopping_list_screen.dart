@@ -32,17 +32,18 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     });
   }
 
-  void didChangeDependencies() {
+    void didChangeDependencies() {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
 
     if (args != null && args is List) {
       setState(() {
         _items.clear();
-        _items.addAll(List<Map<String, dynamic>>.from(args)); // Ensure it's mutable
+        _items.addAll(List<Map<String, dynamic>>.from(args.map((item) => Map<String, dynamic>.from(item))));
       });
     }
   }
+
 
   void _clearSearch() {
     _itemController.clear();
@@ -51,18 +52,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _addItem(Map<String, dynamic> item) {
-    ShoppingListWidgets.showAddItemModal(context, item, () {
-      int index = _items.indexWhere((i) => i['name'] == item['name']);
-      setState(() {
-        if (index != -1) {
-          _items[index]['quantity'] += 1;
-        } else {
-          _items.add({'name': item['name'], 'quantity': 1});
-        }
-        _clearSearch();
-      });
+  ShoppingListWidgets.showAddItemModal(context, item, () {
+    int index = _items.indexWhere((i) => i['name'] == item['name']);
+    setState(() {
+      if (index != -1) {
+        _items[index]['quantity'] += 1;
+      } else {
+        _items.add({
+          'name': item['name'],
+          'quantity': 1,
+          'imageUrl': item['imageUrl'] ?? 'assets/images/placeholder.png',
+          'price': item['price'] ?? 0.0,
+        });
+      }
+      _clearSearch();
     });
-  }
+  });
+}
+
+
 
   void _updateQuantity(int index, int change) {
     setState(() {

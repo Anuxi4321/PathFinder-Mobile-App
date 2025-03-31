@@ -30,13 +30,13 @@ class DatabaseHandler {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 3, // Increment version to apply changes
+        version: 4, // Increment version to apply changes
         onCreate: (db, version) async {
           await _createTables(db);
           await _insertSampleItems(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 3) {
+          if (oldVersion < 4) {
             await _createShoppingListsTable(db);
           }
         },
@@ -52,8 +52,7 @@ class DatabaseHandler {
         imageUrl TEXT,
         price REAL
       )
-    '''
-    );
+    ''');
 
     await _createShoppingListsTable(db);
   }
@@ -65,7 +64,7 @@ class DatabaseHandler {
         name TEXT,
         quantity INTEGER,
         date TEXT,
-        items TEXT
+        imageUrl TEXT
       )
     ''');
   }
@@ -91,10 +90,16 @@ class DatabaseHandler {
           'name': item['name'],
           'quantity': item['quantity'],
           'date': date,
+          'imageUrl': item['imageUrl'] ?? '', // Ensure image URL is saved
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getShoppingList() async {
+    final db = await database;
+    return await db.query('ShoppingLists');
   }
 
   Future<void> _insertSampleItems(Database db) async {
@@ -129,4 +134,4 @@ class DatabaseHandler {
     final path = join(dbDir.path, 'shopping_list.db');
     await deleteDatabase(path);
   }
-} 
+}
