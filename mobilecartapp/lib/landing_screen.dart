@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'shopping_list_repository.dart';
+import 'shopping_list_store.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -53,15 +54,16 @@ class LandingScreen extends StatelessWidget {
 
   void _showListDetails(BuildContext context, Map<String, dynamic> list) {
     List<dynamic> items = [];
-    
+
     try {
-      items = list['items'] != null ? List<Map<String, dynamic>>.from(
-        List<dynamic>.from(list['items']).map((item) => Map<String, dynamic>.from(item))
-      ) : [];
+      items = list['items'] != null
+          ? List<Map<String, dynamic>>.from(
+              List<dynamic>.from(list['items'])
+                  .map((item) => Map<String, dynamic>.from(item)))
+          : [];
     } catch (e) {
       print('Error parsing items: $e');
     }
-
 
     showDialog(
       context: context,
@@ -88,7 +90,10 @@ class LandingScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.pushNamed(context, '/shopping_list', arguments: List.from(items));
+                ShoppingListStore().items.clear();
+                ShoppingListStore().items
+                    .addAll(items.cast<Map<String, dynamic>>());
+                Navigator.pushNamed(context, '/shopping_list');
               },
               child: const Text('Use List'),
             ),
@@ -104,7 +109,8 @@ class LandingScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           'PathFinder',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.blue,
@@ -126,7 +132,10 @@ class LandingScreen extends StatelessWidget {
               children: <Widget>[
                 const Text(
                   'Welcome to PathFinder!',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -137,14 +146,17 @@ class LandingScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 40),
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/shopping_list'),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/shopping_list'),
                   icon: const Icon(Icons.list_alt, size: 24),
                   label: const Text('Shopping List'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
                     elevation: 5,
                   ),
                 ),
@@ -156,9 +168,25 @@ class LandingScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/qr_scanner'),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/qr_scanner'),
                   icon: const Icon(Icons.qr_code_scanner, size: 24),
                   label: const Text('Scan QR Code'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/catalog'),
+                  icon: const Icon(Icons.storefront, size: 24),
+                  label: const Text('Browse Catalog'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
+                    elevation: 5,
+                  ),
                 ),
               ],
             ),

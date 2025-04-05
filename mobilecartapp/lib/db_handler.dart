@@ -30,13 +30,14 @@ class DatabaseHandler {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 4, // Increment version to apply changes
+        version: 5, // Increment version to apply changes
         onCreate: (db, version) async {
           await _createTables(db);
           await _insertSampleItems(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 4) {
+          if (oldVersion < 5) {
+            await db.execute('DROP TABLE IF EXISTS ShoppingLists');
             await _createShoppingListsTable(db);
           }
         },
@@ -57,17 +58,17 @@ class DatabaseHandler {
     await _createShoppingListsTable(db);
   }
 
-  Future<void> _createShoppingListsTable(Database db) async {
+    Future<void> _createShoppingListsTable(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS ShoppingLists (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
-        quantity INTEGER,
         date TEXT,
-        imageUrl TEXT
+        items TEXT
       )
     ''');
   }
+
 
   Future<void> insertItem(Map<String, dynamic> item) async {
     final db = await database;

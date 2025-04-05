@@ -1,28 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'shopping_list_store.dart'; // Import your store
 
 class ShoppingListSync {
-  final String smartCartIP = '192.168.1.100'; // Replace with actual cart IP or make configurable
+  final String smartCartIP = '192.168.1.100'; // Replace with actual cart IP
 
-  Future<void> syncShoppingList(BuildContext context, List<Map<String, dynamic>> items) async {
+  Future<void> syncShoppingList(BuildContext context) async {
+    final items = ShoppingListStore().items;
+
     if (items.isEmpty) {
       print('Sync aborted: Shopping list is empty');
       return;
     }
 
     try {
-        final result = await Navigator.pushNamed(
-          context,
-          '/qr_scanner',
-          arguments: items, // Pass shopping list here
-        );
+      final result = await Navigator.pushNamed(
+        context,
+        '/qr_scanner',
+        arguments: items, // Still useful for scanner if needed
+      );
+
       if (result != null && result is Map<String, dynamic>) {
         final String macAddress = result['mac'];
         final String sessionKey = result['key'];
 
         print('MAC: $macAddress, Key: $sessionKey');
-        print('Shopping List before sending: $items'); // Debug log
+        print('Shopping List before sending: $items');
 
         final String shoppingListData = jsonEncode({
           'mac': macAddress,

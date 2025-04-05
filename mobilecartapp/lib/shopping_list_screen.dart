@@ -3,6 +3,8 @@ import 'dart:async';
 import 'shopping_list_repository.dart';
 import 'shopping_list_sync.dart';
 import 'shopping_list_widgets.dart';
+import 'shopping_list_store.dart';
+
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -12,7 +14,8 @@ class ShoppingListScreen extends StatefulWidget {
 }
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  final List<Map<String, dynamic>> _items = [];
+  final ShoppingListStore _store = ShoppingListStore();
+  List<Map<String, dynamic>> get _items => _store.items;
   final TextEditingController _itemController = TextEditingController();
   final ShoppingListRepository _repository = ShoppingListRepository();
   final ShoppingListSync _sync = ShoppingListSync();
@@ -109,7 +112,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _syncShoppingList() {
-    _sync.syncShoppingList(context, _items);
+    _sync.syncShoppingList(context);
   }
 
   void _saveShoppingList() async {
