@@ -16,42 +16,41 @@ class ShoppingListRepository {
     );
   }
 
-  Future<void> saveShoppingList(List<Map<String, dynamic>> items) async {
+  Future<void> saveShoppingList(List<Map<String, dynamic>> items, {required String name}) async {
     final Database db = await _dbHandler.database;
     final String timestamp = DateTime.now().toIso8601String();
 
-    // Check if a shopping list with the same name exists
-    final existingList = await db.query(
+    await db.insert(
       'ShoppingLists',
-      where: 'name = ?',
-      whereArgs: ['Shopping List'],
+      {
+        'name': name,
+        'date': timestamp,
+        'items': jsonEncode(items),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    if (existingList.isNotEmpty) {
-      // Update the existing list
-      await db.update(
-        'ShoppingLists',
-        {
-          'date': timestamp,
-          'items': jsonEncode(items),
-        },
-        where: 'name = ?',
-        whereArgs: ['Shopping List'],
-      );
-    } else {
-      // Insert a new list
-      await db.insert(
-        'ShoppingLists',
-        {
-          'name': 'Shopping List',
-          'date': timestamp,
-          'items': jsonEncode(items),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+    // Keep only 10 latest
+    final List<Map<String, dynamic>> allLists = await db.query(
+      'ShoppingLists',
+      orderBy: 'date DESC',
+    );
+
+    if (allLists.length > 10) {
+      final excessLists = allLists.sublist(10);
+
+      // Optional: Show warning via debug log or UI
+      print('⚠️ Deleting ${excessLists.length} old list(s)');
+
+      for (var list in excessLists) {
+        await db.delete(
+          'ShoppingLists',
+          where: 'id = ?',
+          whereArgs: [list['id']],
+        );
+      }
     }
   }
-
 
   Future<void> updateShoppingList(int listId, List<Map<String, dynamic>> items) async {
   final db = await _dbHandler.database;

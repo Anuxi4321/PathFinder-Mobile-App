@@ -38,7 +38,7 @@ class LandingScreen extends StatelessWidget {
                     final list = savedLists[index];
                     final itemCount = (list['items'] as List?)?.length ?? 0;
                     return ListTile(
-                      title: Text('List ${index + 1} - ${list['date']}'),
+                      title: Text('${list['name'] ?? 'List ${index + 1}'} - ${list['date']}'),
                       subtitle: Text('$itemCount items'),
                       onTap: () => _showListDetails(context, list),
                     );
@@ -69,7 +69,7 @@ class LandingScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Shopping List - ${list['date']}'),
+          title: Text('${list['name'] ?? 'Shopping List'} - ${list['date']}'),
           content: SizedBox(
             width: double.maxFinite,
             child: ListView(

@@ -116,10 +116,33 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _saveShoppingList() async {
-    await _repository.saveShoppingList(_items);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Shopping list saved!')),
+    String? customName = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        String input = '';
+        return AlertDialog(
+          title: const Text('Name your shopping list'),
+          content: TextField(
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Enter a list name...'),
+            onChanged: (value) => input = value,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(input),
+                child: const Text('Save')),
+          ],
+        );
+      },
     );
+
+    if (customName != null && customName.trim().isNotEmpty) {
+      await _repository.saveShoppingList(_items, name: customName.trim());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Shopping list saved!')),
+      );
+    }
   }
 
   @override
