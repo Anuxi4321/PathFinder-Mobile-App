@@ -5,7 +5,6 @@ import 'shopping_list_sync.dart';
 import 'shopping_list_widgets.dart';
 import 'shopping_list_store.dart';
 
-
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
 
@@ -22,6 +21,30 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   Timer? _debounce;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args != null && args is List) {
+      setState(() {
+        _items.clear();
+        _items.addAll(List<Map<String, dynamic>>.from(
+          args.map((item) => Map<String, dynamic>.from(item)),
+        ));
+        _sortItemsByAisle();
+      });
+    }
+  }
+
+  void _sortItemsByAisle() {
+    _items.sort((a, b) {
+      final aisleA = int.tryParse(a['aisle'].toString()) ?? double.maxFinite.toInt();
+      final aisleB = int.tryParse(b['aisle'].toString()) ?? double.maxFinite.toInt();
+      return aisleA.compareTo(aisleB);
+    });
+  }
+
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
@@ -35,19 +58,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     });
   }
 
-    void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments;
-
-    if (args != null && args is List) {
-      setState(() {
-        _items.clear();
-        _items.addAll(List<Map<String, dynamic>>.from(args.map((item) => Map<String, dynamic>.from(item))));
-      });
-    }
-  }
-
-
   void _clearSearch() {
     _itemController.clear();
     _onSearchChanged('');
@@ -55,25 +65,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _addItem(Map<String, dynamic> item) {
-  ShoppingListWidgets.showAddItemModal(context, item, () {
-    int index = _items.indexWhere((i) => i['name'] == item['name']);
-    setState(() {
-      if (index != -1) {
-        _items[index]['quantity'] += 1;
-      } else {
-        _items.add({
-          'name': item['name'],
-          'quantity': 1,
-          'imageUrl': item['imageUrl'] ?? 'assets/images/placeholder.png',
-          'price': item['price'] ?? 0.0,
-        });
-      }
-      _clearSearch();
+    ShoppingListWidgets.showAddItemModal(context, item, () {
+      int index = _items.indexWhere((i) => i['name'] == item['name']);
+      setState(() {
+        if (index != -1) {
+          _items[index]['quantity'] += 1;
+        } else {
+          _items.add({
+            'name': item['name'],
+            'quantity': 1,
+            'imageUrl': item['imageUrl'] ?? 'assets/images/placeholder.png',
+            'price': item['price'] ?? 0.0,
+            'aisle': item['aisle'] ?? '',
+          });
+        }
+        _sortItemsByAisle();
+        _clearSearch();
+      });
     });
-  });
-}
-
-
+  }
 
   void _updateQuantity(int index, int change) {
     setState(() {
@@ -81,6 +91,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       if (_items[index]['quantity'] < 1) {
         _items.removeAt(index);
       }
+      _sortItemsByAisle();
     });
   }
 
@@ -100,6 +111,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               onPressed: () {
                 setState(() {
                   _items.removeAt(index);
+                  _sortItemsByAisle();
                 });
                 Navigator.pop(context);
               },
@@ -130,8 +142,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             TextButton(
-                onPressed: () => Navigator.of(context).pop(input),
-                child: const Text('Save')),
+              onPressed: () => Navigator.of(context).pop(input),
+              child: const Text('Save'),
+            ),
           ],
         );
       },
@@ -149,8 +162,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shopping List',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Shopping List',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.blue,
       ),
@@ -202,8 +217,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       itemCount: _items.length,
                       itemBuilder: (context, index) {
                         final item = _items[index];
+                        final aisleDisplay = (item['aisle']?.toString().isNotEmpty ?? false)
+                            ? item['aisle'].toString()
+                            : 'N/A';
                         return ListTile(
-                          title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(
+                            item['name'],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text('Aisle: $aisleDisplay'),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

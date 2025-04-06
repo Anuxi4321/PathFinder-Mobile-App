@@ -51,9 +51,11 @@ class DatabaseHandler {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         imageUrl TEXT,
-        price REAL
+        price REAL,
+        aisle INTEGER
       )
     ''');
+
 
     await _createShoppingListsTable(db);
   }
@@ -64,7 +66,10 @@ class DatabaseHandler {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         date TEXT,
-        items TEXT
+        items TEXT,
+        aisle INTEGER,
+        quantity INTEGER,
+        imageUrl TEXT
       )
     ''');
   }
@@ -92,6 +97,7 @@ class DatabaseHandler {
           'quantity': item['quantity'],
           'date': date,
           'imageUrl': item['imageUrl'] ?? '', // Ensure image URL is saved
+          'aisle': item['aisle'] ?? null, // Add this line
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -103,32 +109,32 @@ class DatabaseHandler {
     return await db.query('ShoppingLists');
   }
 
-  Future<void> _insertSampleItems(Database db) async {
-    final sampleData = [
-      {'name': 'Skyflakes', 'imageUrl': 'assets/images/skyflakes.png', 'price': 8.00},
-      {'name': 'Fita', 'imageUrl': 'assets/images/fita.png', 'price': 7.00},
-      {'name': 'Presto', 'imageUrl': 'assets/images/presto.png', 'price': 7.00},
-      {'name': 'Clear', 'imageUrl': 'assets/images/clear.png', 'price': 8.00},
-      {'name': 'Sunsilk', 'imageUrl': 'assets/images/sunsilk.png', 'price': 8.00},
-      {'name': 'Dove', 'imageUrl': 'assets/images/dove.png', 'price': 9.00},
-      {'name': 'Patata', 'imageUrl': 'assets/images/patata.png', 'price': 8.00},
-      {'name': 'Oishi', 'imageUrl': 'assets/images/oishi.png', 'price': 8.00},
-      {'name': 'Chippy', 'imageUrl': 'assets/images/chippy.png', 'price': 8.00},
-      {'name': 'Ariel', 'imageUrl': 'assets/images/ariel.png', 'price': 16.00},
-      {'name': 'Surf', 'imageUrl': 'assets/images/surf.png', 'price': 8.00},
-      {'name': 'Wings', 'imageUrl': 'assets/images/wings.png', 'price': 8.00},
-      {'name': 'Coke', 'imageUrl': 'assets/images/coke.png', 'price': 40.00},
-      {'name': 'Sprite', 'imageUrl': 'assets/images/sprite.png', 'price': 40.00},
-      {'name': 'Royal', 'imageUrl': 'assets/images/royal.png', 'price': 40.00},
-      {'name': 'Cornbeef', 'imageUrl': 'assets/images/cornbeef.png', 'price': 25.00},
-      {'name': 'Beefloaf', 'imageUrl': 'assets/images/beefloaf.png', 'price': 30.00},
-      {'name': 'Sardines', 'imageUrl': 'assets/images/sardines.png', 'price': 27.00},
-    ];
-
-    for (var item in sampleData) {
-      await db.insert('Items', item, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
+Future<void> _insertSampleItems(Database db) async {
+  final sampleData = [
+    {'name': 'Skyflakes', 'imageUrl': 'assets/images/skyflakes.png', 'price': 8.00, 'aisle': 1},
+    {'name': 'Fita', 'imageUrl': 'assets/images/fita.png', 'price': 7.00, 'aisle': 1},
+    {'name': 'Presto', 'imageUrl': 'assets/images/presto.png', 'price': 7.00, 'aisle': 1},
+    {'name': 'Clear', 'imageUrl': 'assets/images/clear.png', 'price': 8.00, 'aisle': 2},
+    {'name': 'Sunsilk', 'imageUrl': 'assets/images/sunsilk.png', 'price': 8.00, 'aisle': 2},
+    {'name': 'Dove', 'imageUrl': 'assets/images/dove.png', 'price': 9.00, 'aisle': 2},
+    {'name': 'Patata', 'imageUrl': 'assets/images/patata.png', 'price': 8.00, 'aisle': 3},
+    {'name': 'Oishi', 'imageUrl': 'assets/images/oishi.png', 'price': 8.00, 'aisle': 3},
+    {'name': 'Chippy', 'imageUrl': 'assets/images/chippy.png', 'price': 8.00, 'aisle': 3},
+    {'name': 'Ariel', 'imageUrl': 'assets/images/ariel.png', 'price': 16.00, 'aisle': 4},
+    {'name': 'Surf', 'imageUrl': 'assets/images/surf.png', 'price': 8.00, 'aisle': 4},
+    {'name': 'Wings', 'imageUrl': 'assets/images/wings.png', 'price': 8.00, 'aisle': 4},
+    {'name': 'Coke', 'imageUrl': 'assets/images/coke.png', 'price': 40.00, 'aisle': 5},
+    {'name': 'Sprite', 'imageUrl': 'assets/images/sprite.png', 'price': 40.00, 'aisle': 5},
+    {'name': 'Royal', 'imageUrl': 'assets/images/royal.png', 'price': 40.00, 'aisle': 5},
+    {'name': 'Cornbeef', 'imageUrl': 'assets/images/cornbeef.png', 'price': 25.00, 'aisle': 6},
+    {'name': 'Beefloaf', 'imageUrl': 'assets/images/beefloaf.png', 'price': 30.00, 'aisle': 6},
+    {'name': 'Sardines', 'imageUrl': 'assets/images/sardines.png', 'price': 27.00, 'aisle': 6},
+  ];  
+  
+  for (var item in sampleData) {
+    await db.insert('Items', item, conflictAlgorithm: ConflictAlgorithm.replace);
   }
+}
 
   Future<void> deleteDatabaseFile() async {
     final dbDir = await getApplicationDocumentsDirectory();

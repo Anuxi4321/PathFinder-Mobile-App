@@ -26,7 +26,7 @@ class _ShoppingCatalogScreenState extends State<ShoppingCatalogScreen> {
     });
   }
 
-  void _addToShoppingList(Map<String, dynamic> item) {
+    void _addToShoppingList(Map<String, dynamic> item) {
     final store = ShoppingListStore();
 
     final alreadyExists = store.items.any((i) => i['name'] == item['name']);
@@ -34,6 +34,9 @@ class _ShoppingCatalogScreenState extends State<ShoppingCatalogScreen> {
       store.items.add({
         'name': item['name'],
         'quantity': 1,
+        'aisle': item['aisle'] ?? 'N/A',
+        'imageUrl': item['imageUrl'] ?? '',
+        'price': item['price'] ?? 0.0,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,6 +48,7 @@ class _ShoppingCatalogScreenState extends State<ShoppingCatalogScreen> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
