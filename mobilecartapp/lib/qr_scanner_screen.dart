@@ -165,18 +165,21 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     );
   }
 
-  Widget _buildButton(String label, VoidCallback onPressed, Color color, {Color textColor = Colors.white}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+ Widget _buildButton(String label, VoidCallback onPressed, Color color, {Color textColor = Colors.white}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: SizedBox(
+      width: double.infinity, // Full width button
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         child: Text(label, style: TextStyle(fontSize: 18, color: textColor)),
       ),
-    );
-  }
+    ),
+  );
+}
 }
