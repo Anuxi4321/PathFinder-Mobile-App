@@ -103,96 +103,107 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'PathFinder',
-          style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.blue,
-        elevation: 10,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue, Colors.lightBlueAccent],
+    @override
+    Widget build(BuildContext context) {
+      final ButtonStyle commonButtonStyle = ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.blue,
+        minimumSize: const Size.fromHeight(60), // Ensures same height
+        textStyle: const TextStyle(fontSize: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        elevation: 5,
+      );
+
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'PathFinder',
+            style: TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
+          centerTitle: true,
+          backgroundColor: Colors.blue,
+          elevation: 10,
         ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const Text(
-                  'Welcome to PathFinder!',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Your personal shopping assistant.',
-                  style: TextStyle(fontSize: 18, color: Colors.white70),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/shopping_list'),
-                  icon: const Icon(Icons.list_alt, size: 24),
-                  label: const Text('Shopping List'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
-                    elevation: 5,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.blue, Colors.lightBlueAccent],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Text(
+                    'Welcome to PathFinder!',
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => _showSavedShoppingLists(context),
-                  icon: const Icon(Icons.shopping_cart, size: 24),
-                  label: const Text('View Saved Shopping List'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/qr_scanner'),
-                  icon: const Icon(Icons.qr_code_scanner, size: 24),
-                  label: const Text('Scan QR Code'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/catalog'),
-                  icon: const Icon(Icons.storefront, size: 24),
-                  label: const Text('Browse Catalog'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
-                    elevation: 5,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Your personal shopping assistant.',
+                    style: TextStyle(fontSize: 18, color: Colors.white70),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 40),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/shopping_list'),
+                      icon: const Icon(Icons.list_alt, size: 24),
+                      label: const Text('Shopping List'),
+                      style: commonButtonStyle,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showSavedShoppingLists(context),
+                      icon: const Icon(Icons.shopping_cart, size: 24),
+                      label: const Text('View Saved Shopping List'),
+                      style: commonButtonStyle,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/qr_scanner'),
+                      icon: const Icon(Icons.qr_code_scanner, size: 24),
+                      label: const Text('Scan QR Code'),
+                      style: commonButtonStyle,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/catalog'),
+                      icon: const Icon(Icons.storefront, size: 24),
+                      label: const Text('Browse Catalog'),
+                      style: commonButtonStyle,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
+    }
 }
